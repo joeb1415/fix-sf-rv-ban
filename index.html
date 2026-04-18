@@ -311,6 +311,14 @@
       return `Dear Supervisor ${supervisorName},\n\nI am a resident in Supervisorial District ${district}.\n\nMy address: ${address}\n\n[Write your message here]\n\nSincerely,\n[Your Name]`;
     }
 
+    function normalizeDistrict(value) {
+      const match = String(value ?? '').trim().match(/\d+/);
+      if (!match) return '';
+
+      const district = String(Number.parseInt(match[0], 10));
+      return district === '0' || Number.isNaN(Number(district)) ? '' : district;
+    }
+
     function showSuggestions(items) {
       suggestions = items;
       activeIndex = -1;
@@ -363,11 +371,12 @@
     }
 
     function renderResult(row) {
-      const district = String(row.supdist).trim();
+      const district = normalizeDistrict(row.supdist);
       const supervisor = SUPERVISORS[district];
 
       if (!supervisor) {
-        showError(`Found District ${district}, but this app’s hardcoded supervisor list needs updating.`);
+        const rawDistrict = String(row.supdist ?? '').trim() || 'unknown';
+        showError(`Found District ${rawDistrict}, but this app’s hardcoded supervisor list needs updating.`);
         return;
       }
 
