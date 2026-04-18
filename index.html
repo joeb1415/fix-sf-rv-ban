@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SF Supervisor Lookup</title>
+  <meta name="description" content="Look up your San Francisco district supervisor by address." />
+  <style>
+    :root {
+      --card: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --accent: #111827;
+      --accentText: #ffffff;
+      --soft: #f9fafb;
+      --shadow: 0 12px 32px rgba(0,0,0,0.08);
+      --radius: 20px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body { padding: 16px; }
+
+    .wrap {
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      padding: 20px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(24px, 4vw, 32px);
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+
+    .sub {
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .searchWrap {
+      position: relative;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .input {
+      flex: 1 1 440px;
+      min-height: 54px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-size: 16px;
+      background: #fff;
+      outline: none;
+    }
+
+    .input:focus {
+      border-color: #9ca3af;
+      box-shadow: 0 0 0 4px rgba(17,24,39,0.08);
+    }
+
+    .button {
+      appearance: none;
+      border: 0;
+      border-radius: 14px;
+      min-height: 54px;
+      padding: 0 16px;
+      font-size: 15px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 0.06s ease;
+      white-space: nowrap;
+    }
+
+    .button:active { transform: translateY(1px); }
+    .button.primary { background: var(--accent); color: var(--accentText); }
+    .button.secondary { background: var(--soft); color: var(--text); border: 1px solid var(--border); }
+
+    .suggestions {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc(100% + 8px);
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      z-index: 20;
+      display: none;
+    }
+
+    .suggestion {
+      padding: 12px 14px;
+      border-top: 1px solid var(--border);
+      font-size: 14px;
+      line-height: 1.4;
+      cursor: pointer;
+    }
+
+    .suggestion:first-child { border-top: 0; }
+    .suggestion:hover, .suggestion.active { background: #f9fafb; }
+
+    .hint, .status {
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .status { display: none; }
+    .error {
+      color: #b91c1c;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+
+    .result {
+      display: none;
+      margin-top: 16px;
+    }
+
+    .resultCard {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
+      background: linear-gradient(180deg, #ffffff, #fafafa);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      background: #eef2ff;
+      color: #3730a3;
+      border-radius: 999px;
+      padding: 7px 11px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .name {
+      margin: 0 0 4px;
+      font-size: 28px;
+      line-height: 1.1;
+    }
+
+    .email {
+      margin: 0 0 6px;
+      font-size: 16px;
+      word-break: break-word;
+    }
+
+    .small {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    @media (max-width: 640px) {
+      body { padding: 10px; }
+      .card { padding: 16px; border-radius: 18px; }
+      .name { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Find your SF supervisor</h1>
+      <p class="sub">Enter a San Francisco address to get the district supervisor and email address.</p>
+
+      <div class="searchWrap">
+        <div class="row">
+          <input id="addressInput" class="input" type="text" autocomplete="off" placeholder="1234 Castro St" />
+          <button id="findBtn" class="button primary" type="button">Look up</button>
+        </div>
+        <div id="suggestions" class="suggestions" role="listbox" aria-label="Address suggestions"></div>
+      </div>
+
+      <div class="hint">Choose a suggested address for the best match.</div>
+      <div id="loading" class="status">Looking up address…</div>
+      <div id="error" class="status error"></div>
+
+      <div id="result" class="result">
+        <div class="resultCard">
+          <div id="districtBadge" class="badge"></div>
+          <h2 id="supervisorName" class="name"></h2>
+          <p id="supervisorEmail" class="email"></p>
+          <p id="matchedAddress" class="small"></p>
+          <div class="actions">
+            <a id="gmailDraftBtn" class="button primary" href="#" target="_blank" rel="noopener">Open Gmail draft</a>
+            <a id="mailAppBtn" class="button secondary" href="#">Use mail app</a>
+            <a id="copyEmailBtn" class="button secondary" href="#">Copy email</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPERVISORS = {
+      '1': { name: 'Connie Chan', email: 'ChanStaff@sfgov.org' },
+      '2': { name: 'Stephen Sherrill', email: 'SherrillStaff@sfgov.org' },
+      '3': { name: 'Danny Sauter', email: 'SauterStaff@sfgov.org' },
+      '4': { name: 'Alan Wong', email: 'WongStaff@sfgov.org' },
+      '5': { name: 'Bilal Mahmood', email: 'MahmoodStaff@sfgov.org' },
+      '6': { name: 'Matt Dorsey', email: 'DorseyStaff@sfgov.org' },
+      '7': { name: 'Myrna Melgar', email: 'MelgarStaff@sfgov.org' },
+      '8': { name: 'Rafael Mandelman', email: 'MandelmanStaff@sfgov.org' },
+      '9': { name: 'Jackie Fielder', email: 'Jackie.Fielder@sfgov.org' },
+      '10': { name: 'Shamann Walton', email: 'Shamann.Walton@sfgov.org' },
+      '11': { name: 'Chyanne Chen', email: 'ChenStaff@sfgov.org' }
+    };
+
+    const DEFAULT_SUBJECT = 'Constituent message';
+
+    const addressInput = document.getElementById('addressInput');
+    const findBtn = document.getElementById('findBtn');
+    const suggestionsEl = document.getElementById('suggestions');
+    const loadingEl = document.getElementById('loading');
+    const errorEl = document.getElementById('error');
+    const resultEl = document.getElementById('result');
+    const districtBadgeEl = document.getElementById('districtBadge');
+    const supervisorNameEl = document.getElementById('supervisorName');
+    const supervisorEmailEl = document.getElementById('supervisorEmail');
+    const matchedAddressEl = document.getElementById('matchedAddress');
+    const gmailDraftBtn = document.getElementById('gmailDraftBtn');
+    const mailAppBtn = document.getElementById('mailAppBtn');
+    const copyEmailBtn = document.getElementById('copyEmailBtn');
+
+    let suggestions = [];
+    let activeIndex = -1;
+    let debounceTimer = null;
+
+    function setLoading(isLoading) {
+      loadingEl.style.display = isLoading ? 'block' : 'none';
+    }
+
+    function showError(message) {
+      errorEl.textContent = message;
+      errorEl.style.display = message ? 'block' : 'none';
+    }
+
+    function hideResult() {
+      resultEl.style.display = 'none';
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    function buildMailto(to, subject, body) {
+      return `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    }
+
+    function buildGmailCompose(to, subject, body) {
+      const url = new URL('https://mail.google.com/mail/');
+      url.searchParams.set('view', 'cm');
+      url.searchParams.set('fs', '1');
+      url.searchParams.set('to', to);
+      url.searchParams.set('su', subject);
+      url.searchParams.set('body', body);
+      return url.toString();
+    }
+
+    function buildSupervisorBody(supervisorName, district, address) {
+      return `Dear Supervisor ${supervisorName},\n\nI am a resident in Supervisorial District ${district}.\n\nMy address: ${address}\n\n[Write your message here]\n\nSincerely,\n[Your Name]`;
+    }
+
+    function showSuggestions(items) {
+      suggestions = items;
+      activeIndex = -1;
+      if (!items.length) {
+        suggestionsEl.style.display = 'none';
+        suggestionsEl.innerHTML = '';
+        return;
+      }
+
+      suggestionsEl.innerHTML = items.map((item, index) => `
+        <div class="suggestion" data-index="${index}" role="option" aria-selected="false">
+          ${escapeHtml(item.address || 'Unknown address')}
+        </div>
+      `).join('');
+      suggestionsEl.style.display = 'block';
+    }
+
+    function updateActiveSuggestion() {
+      const nodes = [...suggestionsEl.querySelectorAll('.suggestion')];
+      nodes.forEach((node, index) => {
+        node.classList.toggle('active', index === activeIndex);
+        node.setAttribute('aria-selected', index === activeIndex ? 'true' : 'false');
+      });
+    }
+
+    async function fetchSuggestions(query) {
+      const url = new URL('https://data.sfgov.org/resource/3mea-di5p.json');
+      url.searchParams.set('$select', 'address,supdist');
+      url.searchParams.set('$q', query);
+      url.searchParams.set('$limit', '8');
+
+      const res = await fetch(url.toString());
+      if (!res.ok) throw new Error('Address lookup failed');
+      const data = await res.json();
+
+      const normalized = query.toLowerCase().replace(/\s+/g, ' ').trim();
+      const deduped = [];
+      const seen = new Set();
+
+      for (const row of data) {
+        if (!row.address || !row.supdist) continue;
+        const key = `${row.address}|${row.supdist}`;
+        if (seen.has(key)) continue;
+        if (!row.address.toLowerCase().includes(normalized) && normalized.length > 5) continue;
+        seen.add(key);
+        deduped.push(row);
+      }
+
+      return deduped;
+    }
+
+    function renderResult(row) {
+      const district = String(row.supdist).trim();
+      const supervisor = SUPERVISORS[district];
+
+      if (!supervisor) {
+        showError(`Found District ${district}, but this app’s hardcoded supervisor list needs updating.`);
+        return;
+      }
+
+      const subject = `Constituent from District ${district}`;
+      const body = buildSupervisorBody(supervisor.name, district, row.address);
+
+      districtBadgeEl.textContent = `District ${district}`;
+      supervisorNameEl.textContent = supervisor.name;
+      supervisorEmailEl.textContent = supervisor.email;
+      matchedAddressEl.textContent = `Matched address: ${row.address}`;
+
+      gmailDraftBtn.href = buildGmailCompose(supervisor.email, subject, body);
+      mailAppBtn.href = buildMailto(supervisor.email, subject, body);
+      copyEmailBtn.href = '#';
+      copyEmailBtn.onclick = async (e) => {
+        e.preventDefault();
+        try {
+          await navigator.clipboard.writeText(supervisor.email);
+          const original = copyEmailBtn.textContent;
+          copyEmailBtn.textContent = 'Copied!';
+          setTimeout(() => { copyEmailBtn.textContent = original; }, 1400);
+        } catch {
+          showError('Could not copy automatically. The email is shown above.');
+        }
+      };
+
+      resultEl.style.display = 'block';
+    }
+
+    async function lookup(query) {
+      setLoading(true);
+      showError('');
+      hideResult();
+
+      try {
+        const rows = await fetchSuggestions(query);
+        if (!rows.length) {
+          showSuggestions([]);
+          showError('No SF address match found. Try a fuller address like “1234 Castro St”.');
+          return;
+        }
+
+        showSuggestions(rows);
+        const normalized = query.trim().toLowerCase();
+        const exact = rows.find(r => (r.address || '').trim().toLowerCase() === normalized);
+        renderResult(exact || rows[0]);
+      } catch (err) {
+        console.error(err);
+        showError('Sorry — the address service did not respond. Please try again in a moment.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    addressInput.addEventListener('input', () => {
+      const query = addressInput.value.trim();
+      hideResult();
+      showError('');
+      if (query.length < 4) {
+        showSuggestions([]);
+        return;
+      }
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(async () => {
+        try {
+          showSuggestions(await fetchSuggestions(query));
+        } catch (err) {
+          console.error(err);
+        }
+      }, 250);
+    });
+
+    addressInput.addEventListener('keydown', (e) => {
+      if (suggestionsEl.style.display !== 'block' || !suggestions.length) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const query = addressInput.value.trim();
+          if (query) lookup(query);
+        }
+        return;
+      }
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        activeIndex = (activeIndex + 1) % suggestions.length;
+        updateActiveSuggestion();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        activeIndex = (activeIndex - 1 + suggestions.length) % suggestions.length;
+        updateActiveSuggestion();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const selected = suggestions[activeIndex] || suggestions[0];
+        if (selected) {
+          addressInput.value = selected.address;
+          showSuggestions([]);
+          renderResult(selected);
+        }
+      } else if (e.key === 'Escape') {
+        showSuggestions([]);
+      }
+    });
+
+    suggestionsEl.addEventListener('click', (e) => {
+      const target = e.target.closest('.suggestion');
+      if (!target) return;
+      const index = Number(target.dataset.index);
+      const selected = suggestions[index];
+      if (!selected) return;
+      addressInput.value = selected.address;
+      showSuggestions([]);
+      renderResult(selected);
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.searchWrap')) showSuggestions([]);
+    });
+
+    findBtn.addEventListener('click', () => {
+      const query = addressInput.value.trim();
+      if (!query) {
+        showError('Enter an address first.');
+        return;
+      }
+      lookup(query);
+    });
+  </script>
+</body>
+</html>
