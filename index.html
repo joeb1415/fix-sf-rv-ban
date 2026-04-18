@@ -176,9 +176,31 @@
     }
 
     .email {
-      margin: 0 0 6px;
+      margin: 0;
       font-size: 16px;
       word-break: break-word;
+      font-weight: 600;
+    }
+
+    .copyRow {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin: 12px 0 6px;
+    }
+
+    .copyField {
+      flex: 1 1 260px;
+      min-height: 54px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-size: 16px;
+      background: var(--soft);
+      color: var(--text);
+      user-select: all;
+      overflow-wrap: anywhere;
     }
 
     .small {
@@ -224,13 +246,12 @@
         <div class="resultCard">
           <div id="districtBadge" class="badge"></div>
           <h2 id="supervisorName" class="name"></h2>
-          <p id="supervisorEmail" class="email"></p>
-          <p id="matchedAddress" class="small"></p>
-          <div class="actions">
-            <a id="gmailDraftBtn" class="button primary" href="#" target="_blank" rel="noopener">Open Gmail draft</a>
-            <a id="mailAppBtn" class="button secondary" href="#">Use mail app</a>
-            <a id="copyEmailBtn" class="button secondary" href="#">Copy email</a>
+          <p class="small">Supervisor email</p>
+          <div class="copyRow">
+            <div id="supervisorEmail" class="copyField"></div>
+            <button id="copyEmailBtn" class="button primary" type="button">Copy email</button>
           </div>
+          <p id="matchedAddress" class="small"></p>
         </div>
       </div>
     </div>
@@ -251,8 +272,6 @@
       '11': { name: 'Chyanne Chen', email: 'ChenStaff@sfgov.org' }
     };
 
-    const DEFAULT_SUBJECT = 'Constituent message';
-
     const addressInput = document.getElementById('addressInput');
     const findBtn = document.getElementById('findBtn');
     const suggestionsEl = document.getElementById('suggestions');
@@ -263,8 +282,6 @@
     const supervisorNameEl = document.getElementById('supervisorName');
     const supervisorEmailEl = document.getElementById('supervisorEmail');
     const matchedAddressEl = document.getElementById('matchedAddress');
-    const gmailDraftBtn = document.getElementById('gmailDraftBtn');
-    const mailAppBtn = document.getElementById('mailAppBtn');
     const copyEmailBtn = document.getElementById('copyEmailBtn');
 
     let suggestions = [];
@@ -291,24 +308,6 @@
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#39;');
-    }
-
-    function buildMailto(to, subject, body) {
-      return `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    }
-
-    function buildGmailCompose(to, subject, body) {
-      const url = new URL('https://mail.google.com/mail/');
-      url.searchParams.set('view', 'cm');
-      url.searchParams.set('fs', '1');
-      url.searchParams.set('to', to);
-      url.searchParams.set('su', subject);
-      url.searchParams.set('body', body);
-      return url.toString();
-    }
-
-    function buildSupervisorBody(supervisorName, district, address) {
-      return `Dear Supervisor ${supervisorName},\n\nI am a resident in Supervisorial District ${district}.\n\nMy address: ${address}\n\n[Write your message here]\n\nSincerely,\n[Your Name]`;
     }
 
     function normalizeDistrict(value) {
@@ -380,19 +379,12 @@
         return;
       }
 
-      const subject = `Constituent from District ${district}`;
-      const body = buildSupervisorBody(supervisor.name, district, row.address);
-
       districtBadgeEl.textContent = `District ${district}`;
       supervisorNameEl.textContent = supervisor.name;
       supervisorEmailEl.textContent = supervisor.email;
       matchedAddressEl.textContent = `Matched address: ${row.address}`;
 
-      gmailDraftBtn.href = buildGmailCompose(supervisor.email, subject, body);
-      mailAppBtn.href = buildMailto(supervisor.email, subject, body);
-      copyEmailBtn.href = '#';
-      copyEmailBtn.onclick = async (e) => {
-        e.preventDefault();
+      copyEmailBtn.onclick = async () => {
         try {
           await navigator.clipboard.writeText(supervisor.email);
           const original = copyEmailBtn.textContent;
